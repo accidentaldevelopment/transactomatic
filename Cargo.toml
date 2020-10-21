@@ -1,9 +1,10 @@
 [package]
-name = "transactomatic"
-version = "0.1.0"
 authors = ["Brian Faga <brian@accidentaldevelopment.com>"]
 edition = "2018"
+name = "transactomatic"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rust_decimal = "1.0"
