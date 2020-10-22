@@ -21,10 +21,18 @@ impl Bank {
         }
     }
 
+    /// Return an iterator over the accounts.  This a convenience so that the underlying storage doesn't have to be exposed.
     pub fn accounts(&self) -> impl Iterator<Item = &Account> {
         self.accounts.values()
     }
 
+    /// Perform a transaction based on the [TransactionInput](transaction/struct.TransactionInput.html).
+    ///
+    /// This method returns a Result with a reference to the affected account.
+    /// This is to allow the caller to see the current state after the transaction has been applied.
+    ///
+    /// The Error returned does not necessarily indicate a critical error; it may just mean that the transaction wasn't applied.
+    /// For example, the input could be a disputed Transaction for which the original Transaction doesn't exist.
     pub fn perform_transaction(&mut self, ti: TransactionInput) -> Result<&Account, Error> {
         let account = self
             .accounts

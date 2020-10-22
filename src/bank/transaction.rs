@@ -35,7 +35,6 @@ pub struct Transaction {
     pub client: ClientID,
     pub tx: TransactionID,
     pub is_disputed: bool,
-    #[serde(flatten)]
     pub kind: TransactionKind,
 }
 
@@ -110,7 +109,6 @@ withdrawal, 1, 1, 1.0
 "#;
 
     const DISPUTE: &'static str = r#"type, client, tx, amount
-
 dispute, 1, 1,
 "#;
 
