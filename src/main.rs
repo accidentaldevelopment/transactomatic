@@ -2,6 +2,7 @@ use transactomatic::cli;
 
 const EXIT_INVALID_USAGE: i32 = 1;
 const EXIT_ERROR_OPENING_FILE: i32 = 2;
+const EXIT_ERROR_PROCESSING: i32 = 3;
 
 fn main() {
     let mut args = std::env::args();
@@ -20,5 +21,8 @@ fn main() {
             std::process::exit(EXIT_ERROR_OPENING_FILE);
         });
 
-    cli::run(reader, std::io::stdout());
+    if let Err(err) = cli::run(reader, std::io::stdout()) {
+        eprintln!("error processing transaction instructions: {:?}", err);
+        std::process::exit(EXIT_ERROR_PROCESSING);
+    }
 }

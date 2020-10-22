@@ -10,7 +10,7 @@ macro_rules! integration_test {
 
                 let mut writer = vec![];
 
-                cli::run(input.as_bytes(), &mut writer);
+                cli::run(input.as_bytes(), &mut writer).unwrap();
 
                 let got = String::from_utf8(writer).unwrap();
 

@@ -1,7 +1,10 @@
 use crate::bank::{transaction::TransactionInput, Bank};
 use std::io;
 
-pub fn run<R: io::Read, W: io::Write>(input: R, output: W) {
+pub fn run<R: io::Read, W: io::Write>(
+    input: R,
+    output: W,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut reader = csv::ReaderBuilder::new()
         .flexible(true)
         .trim(csv::Trim::All)
@@ -18,7 +21,8 @@ pub fn run<R: io::Read, W: io::Write>(input: R, output: W) {
 
     let mut writer = csv::Writer::from_writer(output);
     for account in bank.accounts() {
-        writer.serialize(account).unwrap();
+        writer.serialize(account)?;
     }
-    writer.flush().unwrap();
+    writer.flush()?;
+    Ok(())
 }
