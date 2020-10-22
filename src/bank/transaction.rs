@@ -1,3 +1,13 @@
+//! This module contains types for dealing with transaction instruction input and realized transactions.
+//!
+//! Three scenarios are covered by this module:
+//! 1. A new transaction input has come in.
+//! 2. A new transaction is created.
+//! 3. An existing transaction is adjusted.
+//!
+//! It's important to note with Number 3 that the original transaction keeps its original data and amendment are added to history.
+//! Once a transaction has been created its initial data is not modified.
+
 use super::account::ClientID;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -5,15 +15,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TransactionID(pub u32);
 
+/// Errors related to performing transactions
 #[derive(Debug, PartialEq)]
 pub enum Error {
     InsufficientFunds,
     AccountFrozen,
 }
 
+/// Errors related to creating a transaction from an input.
 #[derive(Debug, PartialEq)]
 pub struct TryFromError(TransactionInputKind);
 
+/// A realized transaction.
 #[derive(Debug)]
 pub struct Transaction {
     pub client: ClientID,
@@ -23,12 +36,14 @@ pub struct Transaction {
     amendment_history: Vec<TransactionAmendment>,
 }
 
+/// Type of original transaction
 #[derive(Debug)]
 pub enum TransactionKind {
     Deposit,
     Withdrawal,
 }
 
+/// An amendment/adjustment to an exisiting Transaction.
 #[derive(Debug, PartialEq)]
 pub enum TransactionAmendment {
     Dispute,
@@ -36,6 +51,7 @@ pub enum TransactionAmendment {
     Chargeback,
 }
 
+/// A transaction instruction from an outside source.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct TransactionInput {
     #[serde(rename = "type")]
@@ -45,6 +61,7 @@ pub struct TransactionInput {
     pub amount: Option<Decimal>,
 }
 
+/// Transaction input type.  Covers all Transaction and amendment types.
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TransactionInputKind {
@@ -90,6 +107,7 @@ impl Transaction {
         }
     }
 
+    /// Returns `true` if the transaction is in dispute.  That is, its last amendment is Dispute.
     pub fn is_disputed(&self) -> bool {
         if let Some(TransactionAmendment::Dispute) = self.amendment_history.last() {
             return true;
@@ -101,6 +119,7 @@ impl Transaction {
         self.amendment_history.push(amendment);
     }
 
+    /// Returns a read-only view into the transaction's history.
     pub fn amendment_history(&self) -> &[TransactionAmendment] {
         &self.amendment_history[..]
     }
@@ -108,6 +127,8 @@ impl Transaction {
 
 impl std::convert::TryFrom<TransactionInput> for Transaction {
     type Error = TryFromError;
+
+    /// Attempt to build a transaction from the input.  This only works if the input type is a TransactionKind and not a TransactionAmendment.
     fn try_from(ti: TransactionInput) -> Result<Self, Self::Error> {
         match ti.kind {
             TransactionInputKind::Deposit => Ok(Transaction::new(

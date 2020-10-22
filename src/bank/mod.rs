@@ -1,3 +1,7 @@
+//! This module contains most of the logic of the application.
+//!
+//! A [Bank](struct.Bank.html) is the system used to keep track of accounts and transactions, as well as apply transactions.
+
 pub mod account;
 pub mod transaction;
 
@@ -8,6 +12,7 @@ use transaction::{
     Error, Transaction, TransactionAmendment, TransactionID, TransactionInput, TransactionInputKind,
 };
 
+/// A Bank is the system used to keep track of accounts and transactions.
 #[derive(Debug)]
 pub struct Bank {
     accounts: HashMap<ClientID, Account>,

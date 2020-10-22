@@ -23,6 +23,7 @@ impl Account {
         }
     }
 
+    /// Total balance isn't stored internally to avoid having to remember updating it every time.
     pub fn total(&self) -> Decimal {
         let mut total = self.available + self.held;
         total.rescale(4);
@@ -30,6 +31,7 @@ impl Account {
     }
 }
 
+// Custom serializer implementation so that the total is included in the output.
 impl Serialize for Account {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
