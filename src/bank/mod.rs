@@ -9,20 +9,13 @@ use transaction::{Error, Transaction, TransactionID, TransactionKind};
 pub struct Bank {
     accounts: HashMap<ClientID, Account>,
     transactions: HashMap<TransactionID, Transaction>,
-
-    decimal_precision: u32,
 }
 
 impl Bank {
     pub fn new() -> Self {
-        Self::with_decimal_precision(4)
-    }
-
-    pub fn with_decimal_precision(decimal_precision: u32) -> Self {
         Self {
             accounts: HashMap::new(),
             transactions: HashMap::new(),
-            decimal_precision,
         }
     }
 
