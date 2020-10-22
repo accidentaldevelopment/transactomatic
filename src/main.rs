@@ -5,6 +5,7 @@ const EXIT_ERROR_OPENING_FILE: i32 = 2;
 
 fn main() {
     let mut args = std::env::args();
+
     let input_file = args.nth(1).unwrap_or_else(|| {
         eprintln!("Input file must be provided");
         std::process::exit(EXIT_INVALID_USAGE);

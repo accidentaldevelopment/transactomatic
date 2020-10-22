@@ -11,6 +11,24 @@ pub enum Error {
     AccountFrozen,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Transaction {
+    pub client: ClientID,
+    pub tx: TransactionID,
+    pub is_disputed: bool,
+    pub kind: TransactionKind,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
+pub enum TransactionKind {
+    Deposit(Decimal),
+    Withdrawal(Decimal),
+    Dispute,
+    Resolve,
+    Chargeback,
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct TransactionInput {
     #[serde(rename = "type")]
@@ -25,24 +43,6 @@ pub struct TransactionInput {
 pub enum TransactionInputKind {
     Deposit,
     Withdrawal,
-    Dispute,
-    Resolve,
-    Chargeback,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Transaction {
-    pub client: ClientID,
-    pub tx: TransactionID,
-    pub is_disputed: bool,
-    pub kind: TransactionKind,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(tag = "type")]
-pub enum TransactionKind {
-    Deposit(Decimal),
-    Withdrawal(Decimal),
     Dispute,
     Resolve,
     Chargeback,
