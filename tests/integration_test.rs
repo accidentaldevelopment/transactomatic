@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use transactomatic::cli;
 
 macro_rules! integration_test {
@@ -6,15 +5,8 @@ macro_rules! integration_test {
         $(
             #[test]
             fn $name() {
-                let mut base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                base.push("tests");
-                let mut input_path = base.clone();
-                input_path.push($in_file);
-                let mut output_path = base.clone();
-                output_path.push($out_file);
-
-                let input = std::fs::read_to_string(input_path).unwrap();
-                let want = std::fs::read_to_string(output_path).unwrap();
+                let input = include_str!($in_file);
+                let want = include_str!($out_file);
 
                 let mut writer = vec![];
 
@@ -35,10 +27,12 @@ macro_rules! integration_test {
 }
 
 integration_test![
+    // A simple transaction series with two clients and no disputes
     (
         basic_deposits_and_withdrawals,
         "simple_in1.csv",
         "simple_out1.csv"
     ),
+    // A complex series with a single client but multiple disputes and an erroneous resolve
     (complex_with_disputes, "complex_in1.csv", "complex_out1.csv")
 ];
