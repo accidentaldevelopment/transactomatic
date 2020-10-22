@@ -3,7 +3,9 @@ pub mod transaction;
 
 use account::{Account, ClientID};
 use std::collections::HashMap;
-use transaction::{Error, Transaction, TransactionID, TransactionKind};
+use transaction::{
+    Error, Transaction, TransactionID, TransactionInput, TransactionInputKind, TransactionKind,
+};
 
 #[derive(Debug)]
 pub struct Bank {
@@ -23,30 +25,31 @@ impl Bank {
         self.accounts.values()
     }
 
-    pub fn perform_transaction(&mut self, transaction: Transaction) -> Result<&Account, Error> {
+    pub fn perform_transaction(&mut self, ti: TransactionInput) -> Result<&Account, Error> {
         let account = self
             .accounts
-            .entry(transaction.client)
-            .or_insert(Account::new(transaction.client));
+            .entry(ti.client)
+            .or_insert(Account::new(ti.client));
 
         if account.locked {
             return Err(Error::AccountFrozen);
         }
 
-        match transaction.kind {
-            TransactionKind::Deposit(amount) => {
-                account.available += amount;
-                self.transactions.insert(transaction.tx, transaction);
+        match ti.kind {
+            TransactionInputKind::Deposit => {
+                account.available += ti.amount.unwrap();
+                self.transactions.insert(ti.tx, Transaction::from(ti));
             }
-            TransactionKind::Withdrawal(amount) => {
+            TransactionInputKind::Withdrawal => {
+                let amount = ti.amount.unwrap();
                 if amount > account.available {
                     return Err(Error::InsufficientFunds);
                 }
                 account.available -= amount;
-                self.transactions.insert(transaction.tx, transaction);
+                self.transactions.insert(ti.tx, Transaction::from(ti));
             }
-            TransactionKind::Dispute => {
-                if let Some(prev_txn) = self.transactions.get_mut(&transaction.tx) {
+            TransactionInputKind::Dispute => {
+                if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     prev_txn.is_disputed = true;
                     match prev_txn.kind {
                         TransactionKind::Deposit(amount) | TransactionKind::Withdrawal(amount) => {
@@ -57,8 +60,8 @@ impl Bank {
                     }
                 }
             }
-            TransactionKind::Resolve => {
-                if let Some(prev_txn) = self.transactions.get_mut(&transaction.tx) {
+            TransactionInputKind::Resolve => {
+                if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed {
                         match prev_txn.kind {
                             TransactionKind::Deposit(amount)
@@ -72,8 +75,8 @@ impl Bank {
                     }
                 }
             }
-            TransactionKind::Chargeback => {
-                if let Some(prev_txn) = self.transactions.get_mut(&transaction.tx) {
+            TransactionInputKind::Chargeback => {
+                if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed {
                         match prev_txn.kind {
                             TransactionKind::Deposit(amount)
@@ -101,11 +104,11 @@ mod tests {
     fn deposit_transaction() {
         let mut bank = Bank::new();
         let account = bank
-            .perform_transaction(Transaction {
+            .perform_transaction(TransactionInput {
                 client: ClientID(0),
                 tx: TransactionID(0),
-                is_disputed: false,
-                kind: TransactionKind::Deposit(Decimal::new(12345, 4)),
+                amount: Some(Decimal::new(12345, 4)),
+                kind: TransactionInputKind::Deposit,
             })
             .unwrap();
 
@@ -124,11 +127,11 @@ mod tests {
         );
 
         let account = bank
-            .perform_transaction(Transaction {
+            .perform_transaction(TransactionInput {
                 client: ClientID(0),
                 tx: TransactionID(0),
-                is_disputed: false,
-                kind: TransactionKind::Withdrawal(Decimal::new(1, 4)),
+                amount: Some(Decimal::new(1, 4)),
+                kind: TransactionInputKind::Withdrawal,
             })
             .unwrap();
 
@@ -138,11 +141,11 @@ mod tests {
     #[test]
     fn withdrawal_transaction_with_insufficient_funds() {
         let mut bank = Bank::new();
-        let result = bank.perform_transaction(Transaction {
+        let result = bank.perform_transaction(TransactionInput {
             client: ClientID(0),
             tx: TransactionID(0),
-            is_disputed: false,
-            kind: TransactionKind::Withdrawal(Decimal::new(1, 4)),
+            amount: Some(Decimal::new(1, 4)),
+            kind: TransactionInputKind::Withdrawal,
         });
 
         assert_eq!(result.unwrap_err(), transaction::Error::InsufficientFunds);
@@ -169,11 +172,11 @@ mod tests {
         );
 
         let account = bank
-            .perform_transaction(Transaction {
+            .perform_transaction(TransactionInput {
                 client: ClientID(0),
                 tx: TransactionID(0),
-                kind: TransactionKind::Dispute,
-                is_disputed: false,
+                amount: None,
+                kind: TransactionInputKind::Dispute,
             })
             .unwrap();
 
@@ -204,11 +207,11 @@ mod tests {
         );
 
         let account = bank
-            .perform_transaction(Transaction {
+            .perform_transaction(TransactionInput {
                 client: ClientID(0),
                 tx: TransactionID(0),
-                is_disputed: false,
-                kind: TransactionKind::Resolve,
+                amount: None,
+                kind: TransactionInputKind::Resolve,
             })
             .unwrap();
 
@@ -239,11 +242,11 @@ mod tests {
         );
 
         let account = bank
-            .perform_transaction(Transaction {
+            .perform_transaction(TransactionInput {
                 client: ClientID(0),
                 tx: TransactionID(0),
-                is_disputed: false,
-                kind: TransactionKind::Chargeback,
+                amount: None,
+                kind: TransactionInputKind::Chargeback,
             })
             .unwrap();
 

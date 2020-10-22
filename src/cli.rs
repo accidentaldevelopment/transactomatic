@@ -1,7 +1,4 @@
-use crate::bank::{
-    transaction::{Transaction, TransactionInput},
-    Bank,
-};
+use crate::bank::{transaction::TransactionInput, Bank};
 use std::io;
 
 pub fn run<R: io::Read, W: io::Write>(input: R, output: W) {
@@ -15,9 +12,8 @@ pub fn run<R: io::Read, W: io::Write>(input: R, output: W) {
 
     for ti in reader.deserialize() {
         let tx_input: TransactionInput = ti.unwrap();
-        let txn = Transaction::from(tx_input);
         // Errors are to be dropped according to spec
-        let _ = bank.perform_transaction(txn);
+        let _ = bank.perform_transaction(tx_input);
     }
 
     let mut writer = csv::Writer::from_writer(output);
