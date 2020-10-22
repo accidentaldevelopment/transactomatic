@@ -1,11 +1,11 @@
-#[warn(clippy::all)]
-mod account;
-mod transaction;
+pub mod account;
+pub mod transaction;
 
 use account::{Account, ClientID};
 use std::collections::HashMap;
 use transaction::{Error, Transaction, TransactionID, TransactionKind};
 
+#[derive(Debug)]
 pub struct Bank {
     accounts: HashMap<ClientID, Account>,
     transactions: HashMap<TransactionID, Transaction>,
@@ -26,6 +26,10 @@ impl Bank {
         }
     }
 
+    pub fn accounts(&self) -> impl Iterator<Item = &Account> {
+        self.accounts.values()
+    }
+
     pub fn perform_transaction(&mut self, transaction: Transaction) -> Result<&Account, Error> {
         let account = self
             .accounts
@@ -37,15 +41,20 @@ impl Bank {
         }
 
         match transaction.kind {
-            TransactionKind::Deposit(amount) => account.available += amount,
+            TransactionKind::Deposit(amount) => {
+                account.available += amount;
+                self.transactions.insert(transaction.tx, transaction);
+            }
             TransactionKind::Withdrawal(amount) => {
                 if amount > account.available {
                     return Err(Error::InsufficientFunds);
                 }
-                account.available -= amount
+                account.available -= amount;
+                self.transactions.insert(transaction.tx, transaction);
             }
             TransactionKind::Dispute => {
-                if let Some(prev_txn) = self.transactions.get(&transaction.tx) {
+                if let Some(prev_txn) = self.transactions.get_mut(&transaction.tx) {
+                    prev_txn.is_disputed = true;
                     match prev_txn.kind {
                         TransactionKind::Deposit(amount) | TransactionKind::Withdrawal(amount) => {
                             account.available -= amount;
@@ -56,25 +65,33 @@ impl Bank {
                 }
             }
             TransactionKind::Resolve => {
-                if let Some(prev_txn) = self.transactions.get(&transaction.tx) {
-                    match prev_txn.kind {
-                        TransactionKind::Deposit(amount) | TransactionKind::Withdrawal(amount) => {
-                            account.available += amount;
-                            account.held -= amount;
+                if let Some(prev_txn) = self.transactions.get_mut(&transaction.tx) {
+                    if prev_txn.is_disputed {
+                        match prev_txn.kind {
+                            TransactionKind::Deposit(amount)
+                            | TransactionKind::Withdrawal(amount) => {
+                                account.available += amount;
+                                account.held -= amount;
+                            }
+                            _ => {}
                         }
-                        _ => {}
+                        prev_txn.is_disputed = false;
                     }
                 }
             }
             TransactionKind::Chargeback => {
-                if let Some(prev_txn) = self.transactions.get(&transaction.tx) {
-                    match prev_txn.kind {
-                        TransactionKind::Deposit(amount) | TransactionKind::Withdrawal(amount) => {
-                            account.held -= amount;
+                if let Some(prev_txn) = self.transactions.get_mut(&transaction.tx) {
+                    if prev_txn.is_disputed {
+                        match prev_txn.kind {
+                            TransactionKind::Deposit(amount)
+                            | TransactionKind::Withdrawal(amount) => {
+                                account.held -= amount;
+                            }
+                            _ => {}
                         }
-                        _ => {}
+                        account.locked = true;
+                        prev_txn.is_disputed = false;
                     }
-                    account.locked = true;
                 }
             }
         }
@@ -94,6 +111,7 @@ mod tests {
             .perform_transaction(Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
+                is_disputed: false,
                 kind: TransactionKind::Deposit(Decimal::new(12345, 4)),
             })
             .unwrap();
@@ -116,6 +134,7 @@ mod tests {
             .perform_transaction(Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
+                is_disputed: false,
                 kind: TransactionKind::Withdrawal(Decimal::new(1, 4)),
             })
             .unwrap();
@@ -129,6 +148,7 @@ mod tests {
         let result = bank.perform_transaction(Transaction {
             client: ClientID(0),
             tx: TransactionID(0),
+            is_disputed: false,
             kind: TransactionKind::Withdrawal(Decimal::new(1, 4)),
         });
 
@@ -150,6 +170,7 @@ mod tests {
             Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
+                is_disputed: false,
                 kind: TransactionKind::Deposit(Decimal::from(10)),
             },
         );
@@ -159,6 +180,7 @@ mod tests {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 kind: TransactionKind::Dispute,
+                is_disputed: false,
             })
             .unwrap();
 
@@ -183,6 +205,7 @@ mod tests {
             Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
+                is_disputed: true,
                 kind: TransactionKind::Deposit(Decimal::from(5)),
             },
         );
@@ -191,6 +214,7 @@ mod tests {
             .perform_transaction(Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
+                is_disputed: false,
                 kind: TransactionKind::Resolve,
             })
             .unwrap();
@@ -217,6 +241,7 @@ mod tests {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 kind: TransactionKind::Deposit(Decimal::from(5)),
+                is_disputed: true,
             },
         );
 
@@ -224,6 +249,7 @@ mod tests {
             .perform_transaction(Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
+                is_disputed: false,
                 kind: TransactionKind::Chargeback,
             })
             .unwrap();

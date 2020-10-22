@@ -1,7 +1,8 @@
 use super::account::ClientID;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TransactionID(pub u32);
 
 #[derive(Debug, PartialEq)]
@@ -10,14 +11,17 @@ pub enum Error {
     AccountFrozen,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Transaction {
     pub client: ClientID,
     pub tx: TransactionID,
+    pub is_disputed: bool,
+    #[serde(flatten)]
     pub kind: TransactionKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
 pub enum TransactionKind {
     Deposit(Decimal),
     Withdrawal(Decimal),

@@ -1,0 +1,13 @@
+type, client, tx, amount
+deposit, 1, 1, 10.12345
+deposit, 1, 2, 10
+# total 20.1235
+dispute, 1, 1,
+# avail 10, hold 10.1235
+resolve, 1,1
+# total 20.1235
+dispute, 1, 2,
+# avail 10.1235, hold 10
+chargeback, 1, 2,
+# total 10.1235, locked
+
