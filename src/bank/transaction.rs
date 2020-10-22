@@ -15,8 +15,8 @@ pub enum Error {
 pub struct Transaction {
     pub client: ClientID,
     pub tx: TransactionID,
-    pub is_disputed: bool,
     pub kind: TransactionKind,
+    pub amendment_history: Vec<TransactionKind>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -59,38 +59,47 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
+impl Transaction {
+    pub fn is_disputed(&self) -> bool {
+        if let Some(TransactionKind::Dispute) = self.amendment_history.last() {
+            return true;
+        }
+        false
+    }
+}
+
 impl std::convert::From<TransactionInput> for Transaction {
     fn from(ti: TransactionInput) -> Self {
         match ti.kind {
             TransactionInputKind::Deposit => Transaction {
                 client: ti.client,
                 tx: ti.tx,
-                is_disputed: false,
                 kind: TransactionKind::Deposit(ti.amount.unwrap()),
+                amendment_history: vec![],
             },
             TransactionInputKind::Withdrawal => Transaction {
                 client: ti.client,
                 tx: ti.tx,
-                is_disputed: false,
                 kind: TransactionKind::Withdrawal(ti.amount.unwrap()),
+                amendment_history: vec![],
             },
             TransactionInputKind::Dispute => Transaction {
                 client: ti.client,
                 tx: ti.tx,
-                is_disputed: false,
                 kind: TransactionKind::Dispute,
+                amendment_history: vec![],
             },
             TransactionInputKind::Resolve => Transaction {
                 client: ti.client,
                 tx: ti.tx,
-                is_disputed: true,
                 kind: TransactionKind::Resolve,
+                amendment_history: vec![],
             },
             TransactionInputKind::Chargeback => Transaction {
                 client: ti.client,
                 tx: ti.tx,
-                is_disputed: true,
                 kind: TransactionKind::Chargeback,
+                amendment_history: vec![],
             },
         }
     }

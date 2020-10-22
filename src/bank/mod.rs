@@ -58,11 +58,11 @@ impl Bank {
             }
             TransactionInputKind::Dispute => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
-                    prev_txn.is_disputed = true;
                     match prev_txn.kind {
                         TransactionKind::Deposit(amount) | TransactionKind::Withdrawal(amount) => {
                             account.available -= amount;
                             account.held += amount;
+                            prev_txn.amendment_history.push(TransactionKind::Dispute);
                         }
                         _ => {}
                     }
@@ -70,31 +70,31 @@ impl Bank {
             }
             TransactionInputKind::Resolve => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
-                    if prev_txn.is_disputed {
+                    if prev_txn.is_disputed() {
                         match prev_txn.kind {
                             TransactionKind::Deposit(amount)
                             | TransactionKind::Withdrawal(amount) => {
                                 account.available += amount;
                                 account.held -= amount;
+                                prev_txn.amendment_history.push(TransactionKind::Resolve);
                             }
                             _ => {}
                         }
-                        prev_txn.is_disputed = false;
                     }
                 }
             }
             TransactionInputKind::Chargeback => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
-                    if prev_txn.is_disputed {
+                    if prev_txn.is_disputed() {
                         match prev_txn.kind {
                             TransactionKind::Deposit(amount)
                             | TransactionKind::Withdrawal(amount) => {
                                 account.held -= amount;
+                                prev_txn.amendment_history.push(TransactionKind::Chargeback);
                             }
                             _ => {}
                         }
                         account.locked = true;
-                        prev_txn.is_disputed = false;
                     }
                 }
             }
@@ -174,8 +174,8 @@ mod tests {
             Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
-                is_disputed: false,
                 kind: TransactionKind::Deposit(Decimal::from(10)),
+                amendment_history: vec![],
             },
         );
 
@@ -209,8 +209,8 @@ mod tests {
             Transaction {
                 client: ClientID(0),
                 tx: TransactionID(0),
-                is_disputed: true,
                 kind: TransactionKind::Deposit(Decimal::from(5)),
+                amendment_history: vec![TransactionKind::Dispute],
             },
         );
 
@@ -245,7 +245,7 @@ mod tests {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 kind: TransactionKind::Deposit(Decimal::from(5)),
-                is_disputed: true,
+                amendment_history: vec![TransactionKind::Dispute],
             },
         );
 
