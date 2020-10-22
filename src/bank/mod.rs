@@ -3,8 +3,9 @@ pub mod transaction;
 
 use account::{Account, ClientID};
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use transaction::{
-    Error, Transaction, TransactionID, TransactionInput, TransactionInputKind, TransactionKind,
+    Error, Transaction, TransactionAmendment, TransactionID, TransactionInput, TransactionInputKind,
 };
 
 #[derive(Debug)]
@@ -46,7 +47,8 @@ impl Bank {
         match ti.kind {
             TransactionInputKind::Deposit => {
                 account.available += ti.amount.unwrap();
-                self.transactions.insert(ti.tx, Transaction::from(ti));
+                self.transactions
+                    .insert(ti.tx, Transaction::try_from(ti).unwrap());
             }
             TransactionInputKind::Withdrawal => {
                 let amount = ti.amount.unwrap();
@@ -54,46 +56,30 @@ impl Bank {
                     return Err(Error::InsufficientFunds);
                 }
                 account.available -= amount;
-                self.transactions.insert(ti.tx, Transaction::from(ti));
+                self.transactions
+                    .insert(ti.tx, Transaction::try_from(ti).unwrap());
             }
             TransactionInputKind::Dispute => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
-                    match prev_txn.kind {
-                        TransactionKind::Deposit(amount) | TransactionKind::Withdrawal(amount) => {
-                            account.available -= amount;
-                            account.held += amount;
-                            prev_txn.amendment_history.push(TransactionKind::Dispute);
-                        }
-                        _ => {}
-                    }
+                    account.available -= prev_txn.amount;
+                    account.held += prev_txn.amount;
+                    prev_txn.amend(TransactionAmendment::Dispute);
                 }
             }
             TransactionInputKind::Resolve => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
-                        match prev_txn.kind {
-                            TransactionKind::Deposit(amount)
-                            | TransactionKind::Withdrawal(amount) => {
-                                account.available += amount;
-                                account.held -= amount;
-                                prev_txn.amendment_history.push(TransactionKind::Resolve);
-                            }
-                            _ => {}
-                        }
+                        account.available += prev_txn.amount;
+                        account.held -= prev_txn.amount;
+                        prev_txn.amend(TransactionAmendment::Resolve);
                     }
                 }
             }
             TransactionInputKind::Chargeback => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
-                        match prev_txn.kind {
-                            TransactionKind::Deposit(amount)
-                            | TransactionKind::Withdrawal(amount) => {
-                                account.held -= amount;
-                                prev_txn.amendment_history.push(TransactionKind::Chargeback);
-                            }
-                            _ => {}
-                        }
+                        account.held -= prev_txn.amount;
+                        prev_txn.amend(TransactionAmendment::Chargeback);
                         account.locked = true;
                     }
                 }
@@ -105,6 +91,7 @@ impl Bank {
 
 #[cfg(test)]
 mod tests {
+    use super::transaction::TransactionKind;
     use super::*;
     use rust_decimal::Decimal;
 
@@ -169,15 +156,9 @@ mod tests {
                 ..Account::new(ClientID(0))
             },
         );
-        bank.transactions.insert(
-            TransactionID(0),
-            Transaction {
-                client: ClientID(0),
-                tx: TransactionID(0),
-                kind: TransactionKind::Deposit(Decimal::from(10)),
-                amendment_history: vec![],
-            },
-        );
+        let tx = TransactionID(0);
+        let txn = Transaction::new(ClientID(0), tx, TransactionKind::Deposit, Decimal::from(10));
+        bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInput {
@@ -191,6 +172,10 @@ mod tests {
         assert_eq!(account.available, Decimal::from(0));
         assert_eq!(account.total(), Decimal::from(10));
         assert_eq!(account.held, Decimal::from(10));
+        assert_eq!(
+            bank.transactions[&tx].amendment_history(),
+            [TransactionAmendment::Dispute]
+        );
     }
 
     #[test]
@@ -204,15 +189,10 @@ mod tests {
                 ..Account::new(ClientID(0))
             },
         );
-        bank.transactions.insert(
-            TransactionID(0),
-            Transaction {
-                client: ClientID(0),
-                tx: TransactionID(0),
-                kind: TransactionKind::Deposit(Decimal::from(5)),
-                amendment_history: vec![TransactionKind::Dispute],
-            },
-        );
+        let tx = TransactionID(0);
+        let mut txn = Transaction::new(ClientID(0), tx, TransactionKind::Deposit, Decimal::from(5));
+        txn.amend(TransactionAmendment::Dispute);
+        bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInput {
@@ -226,6 +206,10 @@ mod tests {
         assert_eq!(account.available, Decimal::from(10));
         assert_eq!(account.total(), Decimal::from(10));
         assert_eq!(account.held, Decimal::from(0));
+        assert_eq!(
+            bank.transactions[&tx].amendment_history(),
+            [TransactionAmendment::Dispute, TransactionAmendment::Resolve]
+        );
     }
 
     #[test]
@@ -239,15 +223,10 @@ mod tests {
                 ..Account::new(ClientID(0))
             },
         );
-        bank.transactions.insert(
-            TransactionID(0),
-            Transaction {
-                client: ClientID(0),
-                tx: TransactionID(0),
-                kind: TransactionKind::Deposit(Decimal::from(5)),
-                amendment_history: vec![TransactionKind::Dispute],
-            },
-        );
+        let tx = TransactionID(0);
+        let mut txn = Transaction::new(ClientID(0), tx, TransactionKind::Deposit, Decimal::from(5));
+        txn.amend(TransactionAmendment::Dispute);
+        bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInput {
@@ -262,5 +241,12 @@ mod tests {
         assert_eq!(account.total(), Decimal::from(5));
         assert_eq!(account.held, Decimal::from(0));
         assert_eq!(account.locked, true);
+        assert_eq!(
+            bank.transactions[&tx].amendment_history(),
+            [
+                TransactionAmendment::Dispute,
+                TransactionAmendment::Chargeback
+            ]
+        );
     }
 }

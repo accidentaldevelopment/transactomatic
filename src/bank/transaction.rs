@@ -11,19 +11,26 @@ pub enum Error {
     AccountFrozen,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, PartialEq)]
+pub struct TryFromError(TransactionInputKind);
+
+#[derive(Debug)]
 pub struct Transaction {
     pub client: ClientID,
     pub tx: TransactionID,
     pub kind: TransactionKind,
-    pub amendment_history: Vec<TransactionKind>,
+    pub amount: Decimal,
+    amendment_history: Vec<TransactionAmendment>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(tag = "type")]
+#[derive(Debug)]
 pub enum TransactionKind {
-    Deposit(Decimal),
-    Withdrawal(Decimal),
+    Deposit,
+    Withdrawal,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TransactionAmendment {
     Dispute,
     Resolve,
     Chargeback,
@@ -59,48 +66,63 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
+impl std::fmt::Display for TryFromError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "can't create transaction from input kind {:?}", self.0)
+    }
+}
+
+impl std::error::Error for TryFromError {}
+
 impl Transaction {
+    pub fn new<D: Into<Decimal>>(
+        client: ClientID,
+        tx: TransactionID,
+        kind: TransactionKind,
+        amount: D,
+    ) -> Self {
+        Self {
+            client,
+            tx,
+            kind,
+            amount: amount.into(),
+            amendment_history: vec![],
+        }
+    }
+
     pub fn is_disputed(&self) -> bool {
-        if let Some(TransactionKind::Dispute) = self.amendment_history.last() {
+        if let Some(TransactionAmendment::Dispute) = self.amendment_history.last() {
             return true;
         }
         false
     }
+
+    pub fn amend(&mut self, amendment: TransactionAmendment) {
+        self.amendment_history.push(amendment);
+    }
+
+    pub fn amendment_history(&self) -> &[TransactionAmendment] {
+        &self.amendment_history[..]
+    }
 }
 
-impl std::convert::From<TransactionInput> for Transaction {
-    fn from(ti: TransactionInput) -> Self {
+impl std::convert::TryFrom<TransactionInput> for Transaction {
+    type Error = TryFromError;
+    fn try_from(ti: TransactionInput) -> Result<Self, Self::Error> {
         match ti.kind {
-            TransactionInputKind::Deposit => Transaction {
-                client: ti.client,
-                tx: ti.tx,
-                kind: TransactionKind::Deposit(ti.amount.unwrap()),
-                amendment_history: vec![],
-            },
-            TransactionInputKind::Withdrawal => Transaction {
-                client: ti.client,
-                tx: ti.tx,
-                kind: TransactionKind::Withdrawal(ti.amount.unwrap()),
-                amendment_history: vec![],
-            },
-            TransactionInputKind::Dispute => Transaction {
-                client: ti.client,
-                tx: ti.tx,
-                kind: TransactionKind::Dispute,
-                amendment_history: vec![],
-            },
-            TransactionInputKind::Resolve => Transaction {
-                client: ti.client,
-                tx: ti.tx,
-                kind: TransactionKind::Resolve,
-                amendment_history: vec![],
-            },
-            TransactionInputKind::Chargeback => Transaction {
-                client: ti.client,
-                tx: ti.tx,
-                kind: TransactionKind::Chargeback,
-                amendment_history: vec![],
-            },
+            TransactionInputKind::Deposit => Ok(Transaction::new(
+                ti.client,
+                ti.tx,
+                TransactionKind::Deposit,
+                ti.amount.unwrap(),
+            )),
+            TransactionInputKind::Withdrawal => Ok(Transaction::new(
+                ti.client,
+                ti.tx,
+                TransactionKind::Withdrawal,
+                ti.amount.unwrap(),
+            )),
+            _ => Err(TryFromError(ti.kind)),
         }
     }
 }
