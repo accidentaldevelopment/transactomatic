@@ -9,7 +9,8 @@ use account::{Account, ClientID};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use transaction::{
-    Error, Transaction, TransactionAmendment, TransactionID, TransactionInput, TransactionInputKind,
+    instruction::{TransactionInstruction, TransactionInstructionKind},
+    Error, Transaction, TransactionAmendment, TransactionID,
 };
 
 /// A Bank is the system used to keep track of accounts and transactions.
@@ -39,7 +40,7 @@ impl Bank {
     ///
     /// The Error returned does not necessarily indicate a critical error; it may just mean that the transaction wasn't applied.
     /// For example, the input could be a disputed Transaction for which the original Transaction doesn't exist.
-    pub fn perform_transaction(&mut self, ti: TransactionInput) -> Result<&Account, Error> {
+    pub fn perform_transaction(&mut self, ti: TransactionInstruction) -> Result<&Account, Error> {
         let account = self
             .accounts
             .entry(ti.client)
@@ -50,12 +51,12 @@ impl Bank {
         }
 
         match ti.kind {
-            TransactionInputKind::Deposit => {
+            TransactionInstructionKind::Deposit => {
                 account.available += ti.amount.unwrap();
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
             }
-            TransactionInputKind::Withdrawal => {
+            TransactionInstructionKind::Withdrawal => {
                 let amount = ti.amount.unwrap();
                 if amount > account.available {
                     return Err(Error::InsufficientFunds);
@@ -64,14 +65,14 @@ impl Bank {
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
             }
-            TransactionInputKind::Dispute => {
+            TransactionInstructionKind::Dispute => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     account.available -= prev_txn.amount;
                     account.held += prev_txn.amount;
                     prev_txn.amend(TransactionAmendment::Dispute);
                 }
             }
-            TransactionInputKind::Resolve => {
+            TransactionInstructionKind::Resolve => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
                         account.available += prev_txn.amount;
@@ -80,7 +81,7 @@ impl Bank {
                     }
                 }
             }
-            TransactionInputKind::Chargeback => {
+            TransactionInstructionKind::Chargeback => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
                         account.held -= prev_txn.amount;
@@ -104,11 +105,11 @@ mod tests {
     fn deposit_transaction() {
         let mut bank = Bank::new();
         let account = bank
-            .perform_transaction(TransactionInput {
+            .perform_transaction(TransactionInstruction {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 amount: Some(Decimal::new(12345, 4)),
-                kind: TransactionInputKind::Deposit,
+                kind: TransactionInstructionKind::Deposit,
             })
             .unwrap();
 
@@ -127,11 +128,11 @@ mod tests {
         );
 
         let account = bank
-            .perform_transaction(TransactionInput {
+            .perform_transaction(TransactionInstruction {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 amount: Some(Decimal::new(1, 4)),
-                kind: TransactionInputKind::Withdrawal,
+                kind: TransactionInstructionKind::Withdrawal,
             })
             .unwrap();
 
@@ -141,11 +142,11 @@ mod tests {
     #[test]
     fn withdrawal_transaction_with_insufficient_funds() {
         let mut bank = Bank::new();
-        let result = bank.perform_transaction(TransactionInput {
+        let result = bank.perform_transaction(TransactionInstruction {
             client: ClientID(0),
             tx: TransactionID(0),
             amount: Some(Decimal::new(1, 4)),
-            kind: TransactionInputKind::Withdrawal,
+            kind: TransactionInstructionKind::Withdrawal,
         });
 
         assert_eq!(result.unwrap_err(), transaction::Error::InsufficientFunds);
@@ -166,11 +167,11 @@ mod tests {
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
-            .perform_transaction(TransactionInput {
+            .perform_transaction(TransactionInstruction {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 amount: None,
-                kind: TransactionInputKind::Dispute,
+                kind: TransactionInstructionKind::Dispute,
             })
             .unwrap();
 
@@ -200,11 +201,11 @@ mod tests {
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
-            .perform_transaction(TransactionInput {
+            .perform_transaction(TransactionInstruction {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 amount: None,
-                kind: TransactionInputKind::Resolve,
+                kind: TransactionInstructionKind::Resolve,
             })
             .unwrap();
 
@@ -234,11 +235,11 @@ mod tests {
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
-            .perform_transaction(TransactionInput {
+            .perform_transaction(TransactionInstruction {
                 client: ClientID(0),
                 tx: TransactionID(0),
                 amount: None,
-                kind: TransactionInputKind::Chargeback,
+                kind: TransactionInstructionKind::Chargeback,
             })
             .unwrap();
 

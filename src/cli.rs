@@ -1,4 +1,4 @@
-use crate::bank::{transaction::TransactionInput, Bank};
+use crate::bank::{transaction::instruction::TransactionInstruction, Bank};
 use std::io;
 
 pub fn run<R: io::Read, W: io::Write>(
@@ -14,7 +14,7 @@ pub fn run<R: io::Read, W: io::Write>(
     let mut bank = Bank::new();
 
     for ti in reader.deserialize() {
-        let tx_input: TransactionInput = ti.unwrap();
+        let tx_input: TransactionInstruction = ti.unwrap();
         // Errors are to be dropped according to spec
         let _ = bank.perform_transaction(tx_input);
     }
