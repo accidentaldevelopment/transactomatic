@@ -41,10 +41,10 @@ impl Bank {
     /// The Error returned does not necessarily indicate a critical error; it may just mean that the transaction wasn't applied.
     /// For example, the input could be a disputed Transaction for which the original Transaction doesn't exist.
     pub fn perform_transaction(&mut self, ti: TransactionInstruction) -> Result<&Account, Error> {
-        let account = self
-            .accounts
-            .entry(ti.client)
-            .or_insert(Account::new(ti.client));
+        let account = self.accounts.entry(ti.client).or_insert_with(|| {
+            log::info!("creating account {:?}", ti.client);
+            Account::new(ti.client)
+        });
 
         if account.locked {
             return Err(Error::AccountFrozen);
@@ -52,7 +52,9 @@ impl Bank {
 
         match ti.kind {
             TransactionInstructionKind::Deposit => {
+                log::info!("applying transaction {:?}", ti);
                 account.available += ti.amount.unwrap();
+                log::debug!("{:?}", account);
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
             }
@@ -60,6 +62,8 @@ impl Bank {
                 let amount = ti.amount.unwrap();
                 if amount > account.available {
                     return Err(Error::InsufficientFunds);
+                } else {
+                    log::info!("applying transaction {:?}", ti);
                 }
                 account.available -= amount;
                 self.transactions
@@ -78,6 +82,8 @@ impl Bank {
                         account.available += prev_txn.amount;
                         account.held -= prev_txn.amount;
                         prev_txn.amend(TransactionAmendment::Resolve);
+                    } else {
+                        log::warn!("transaction is not in dispute: {:?}", prev_txn);
                     }
                 }
             }
@@ -87,6 +93,8 @@ impl Bank {
                         account.held -= prev_txn.amount;
                         prev_txn.amend(TransactionAmendment::Chargeback);
                         account.locked = true;
+                    } else {
+                        log::warn!("transaction is not in dispute: {:?}", prev_txn);
                     }
                 }
             }

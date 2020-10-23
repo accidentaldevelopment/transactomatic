@@ -1,3 +1,5 @@
+//! This module contains types for handling transaction instructions.
+
 use crate::bank::{ClientID, TransactionID};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};

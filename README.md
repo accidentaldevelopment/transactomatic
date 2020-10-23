@@ -8,6 +8,12 @@ This application reads in a list of transaction instructions from a file specifi
 
     cargo run -- input_file.csv
 
+## Features
+
+There is only one optional feature: `logging`.
+
+`logging` enables [pretty_env_logging](https://docs.rs/pretty_env_logger/0.4.0/pretty_env_logger). Logging configuration is performed by that library.
+
 ## Libraries
 
 - csv – For parsing and writing CSV data.
@@ -31,4 +37,4 @@ Tests can be run with the standard `cargo test` command and options.
 
 - The transaction model became a little overcomplicated; it could probably be simplified.
 - More tests! (And then some more tests)
-- Add logging
+- ~~Add logging~~

@@ -5,6 +5,9 @@ const EXIT_ERROR_OPENING_FILE: i32 = 2;
 const EXIT_ERROR_PROCESSING: i32 = 3;
 
 fn main() {
+    #[cfg(feature = "logging")]
+    pretty_env_logger::init();
+
     let mut args = std::env::args();
 
     let input_file = args.nth(1).unwrap_or_else(|| {

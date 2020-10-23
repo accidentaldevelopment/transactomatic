@@ -16,7 +16,9 @@ pub fn run<R: io::Read, W: io::Write>(
     for ti in reader.deserialize() {
         let tx_input: TransactionInstruction = ti.unwrap();
         // Errors are to be dropped according to spec
-        let _ = bank.perform_transaction(tx_input);
+        if let Err(e) = bank.perform_transaction(tx_input) {
+            log::error!("error applying transaction: {:?}", e);
+        }
     }
 
     let mut writer = csv::Writer::from_writer(output);
