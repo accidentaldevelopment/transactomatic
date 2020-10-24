@@ -47,55 +47,72 @@ impl Bank {
         });
 
         if account.locked {
+            log::warn!("account is locked {:?}", account);
             return Err(Error::AccountFrozen);
         }
 
         match ti.kind {
             TransactionInstructionKind::Deposit => {
                 log::info!("applying transaction {:?}", ti);
+                log::trace!("applying transaction {:?} to account {:?}", ti, account);
                 account.available += ti.amount.unwrap();
-                log::debug!("{:?}", account);
+                log::trace!("transaction applied to account {:?}", account);
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
             }
             TransactionInstructionKind::Withdrawal => {
                 let amount = ti.amount.unwrap();
                 if amount > account.available {
+                    log::error!("insufficent funds for transaction {:?}", ti);
                     return Err(Error::InsufficientFunds);
                 } else {
                     log::info!("applying transaction {:?}", ti);
+                    log::trace!("applying transaction {:?} to account {:?}", ti, account);
                 }
                 account.available -= amount;
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
+                log::trace!("transaction applied to account {:?}", account);
             }
             TransactionInstructionKind::Dispute => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
+                    log::trace!("applying transaction {:?} to account {:?}", ti, account);
                     account.available -= prev_txn.amount;
                     account.held += prev_txn.amount;
                     prev_txn.amend(TransactionAmendment::Dispute);
+                    log::trace!("transaction applied to account {:?}", account);
+                } else {
+                    log::info!("original transaction not found for instruction {:?}", ti);
                 }
             }
             TransactionInstructionKind::Resolve => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
+                        log::trace!("applying transaction {:?} to account {:?}", ti, account);
                         account.available += prev_txn.amount;
                         account.held -= prev_txn.amount;
                         prev_txn.amend(TransactionAmendment::Resolve);
+                        log::trace!("transaction applied to account {:?}", account);
                     } else {
                         log::warn!("transaction is not in dispute: {:?}", prev_txn);
                     }
+                } else {
+                    log::info!("original transaction not found for instruction {:?}", ti);
                 }
             }
             TransactionInstructionKind::Chargeback => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
+                        log::trace!("applying transaction {:?} to account {:?}", ti, account);
                         account.held -= prev_txn.amount;
                         prev_txn.amend(TransactionAmendment::Chargeback);
                         account.locked = true;
+                        log::trace!("transaction applied to account {:?}", account);
                     } else {
                         log::warn!("transaction is not in dispute: {:?}", prev_txn);
                     }
+                } else {
+                    log::info!("original transaction not found for instruction {:?}", ti);
                 }
             }
         }

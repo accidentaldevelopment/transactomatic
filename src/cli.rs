@@ -15,6 +15,7 @@ pub fn run<R: io::Read, W: io::Write>(
 
     for ti in reader.deserialize() {
         let tx_input: TransactionInstruction = ti.unwrap();
+        log::debug!("transaction instruction {:?}", tx_input);
         // Errors are to be dropped according to spec
         if let Err(e) = bank.perform_transaction(tx_input) {
             log::error!("error applying transaction: {:?}", e);
