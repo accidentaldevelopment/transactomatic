@@ -37,9 +37,9 @@ impl Serialize for Account {
     where
         S: serde::Serializer,
     {
-        let mut available = Decimal::from(self.available);
+        let mut available = self.available;
         available.rescale(4);
-        let mut held = Decimal::from(self.held);
+        let mut held = self.held;
         held.rescale(4);
 
         let mut s = serializer.serialize_struct("Account", 5)?;

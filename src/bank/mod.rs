@@ -120,6 +120,12 @@ impl Bank {
     }
 }
 
+impl Default for Bank {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::transaction::TransactionKind;
