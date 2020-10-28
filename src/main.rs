@@ -5,8 +5,7 @@ const EXIT_ERROR_OPENING_FILE: i32 = 2;
 const EXIT_ERROR_PROCESSING: i32 = 3;
 
 fn main() {
-    #[cfg(feature = "logging")]
-    pretty_env_logger::init();
+    init_logging();
 
     let mut args = std::env::args();
 
@@ -27,5 +26,16 @@ fn main() {
     if let Err(err) = cli::run(reader, std::io::stdout()) {
         eprintln!("error processing transaction instructions: {:?}", err);
         std::process::exit(EXIT_ERROR_PROCESSING);
+    }
+}
+
+/// Initialize logging just like env_logger, but default to level OFF to avoid polluting output.
+fn init_logging() {
+    if let Err(_) = std::env::var("RUST_LOG") {
+        pretty_env_logger::formatted_builder()
+            .filter_level(log::LevelFilter::Off)
+            .init();
+    } else {
+        pretty_env_logger::init();
     }
 }

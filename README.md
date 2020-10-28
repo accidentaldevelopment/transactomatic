@@ -8,11 +8,10 @@ This application reads in a list of transaction instructions from a file specifi
 
     cargo run -- input_file.csv
 
-## Features
+## Logging
 
-There is only one optional feature: `logging`.
-
-`logging` enables [pretty_env_logging](https://docs.rs/pretty_env_logger/0.4.0/pretty_env_logger). Logging configuration is performed by that library.
+Transactomatic uses [pretty_env_logging](https://docs.rs/pretty_env_logger/0.4.0/pretty_env_logger). Logging configuration is performed by that library. The default level is overridden to be `OFF` instead of `ERROR`; this prevents log output from polluting the rest of the output.
+Logs are written to `STDERR` so anything parsing `STDOUT` should be unaffected, but just in case the default level is still `OFF`.
 
 ## Libraries
 
