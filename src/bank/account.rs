@@ -3,18 +3,18 @@ use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct ClientID(pub u16);
+pub struct AccountID(pub u16);
 
 #[derive(Debug)]
 pub struct Account {
-    pub client: ClientID,
+    pub client: AccountID,
     pub available: Decimal,
     pub held: Decimal,
     pub locked: bool,
 }
 
 impl Account {
-    pub fn new(client: ClientID) -> Self {
+    pub fn new(client: AccountID) -> Self {
         Self {
             client,
             available: Decimal::from(0),

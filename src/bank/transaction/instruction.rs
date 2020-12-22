@@ -1,6 +1,6 @@
 //! This module contains types for handling transaction instructions.
 
-use crate::bank::{ClientID, TransactionID};
+use crate::bank::{AccountID, TransactionID};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct TransactionInstruction {
     #[serde(rename = "type")]
     pub kind: TransactionInstructionKind,
-    pub client: ClientID,
+    pub client: AccountID,
     pub tx: TransactionID,
     pub amount: Option<Decimal>,
 }
@@ -72,7 +72,7 @@ chargeback, 1, 1
             deposit,
             DEPOSIT,
             TransactionInstruction {
-                client: ClientID(1),
+                client: AccountID(1),
                 tx: TransactionID(1),
                 amount: Some(Decimal::from(1)),
                 kind: TransactionInstructionKind::Deposit
@@ -82,7 +82,7 @@ chargeback, 1, 1
             withdrawal,
             WITHDRAWAL,
             TransactionInstruction {
-                client: ClientID(1),
+                client: AccountID(1),
                 tx: TransactionID(1),
                 amount: Some(Decimal::from(1)),
                 kind: TransactionInstructionKind::Withdrawal
@@ -92,7 +92,7 @@ chargeback, 1, 1
             dispute,
             DISPUTE,
             TransactionInstruction {
-                client: ClientID(1),
+                client: AccountID(1),
                 tx: TransactionID(1),
                 amount: None,
                 kind: TransactionInstructionKind::Dispute
@@ -102,7 +102,7 @@ chargeback, 1, 1
             resolve,
             RESOLVE,
             TransactionInstruction {
-                client: ClientID(1),
+                client: AccountID(1),
                 tx: TransactionID(1),
                 amount: None,
                 kind: TransactionInstructionKind::Resolve
@@ -112,7 +112,7 @@ chargeback, 1, 1
             chargeback,
             CHARGEBACK,
             TransactionInstruction {
-                client: ClientID(1),
+                client: AccountID(1),
                 tx: TransactionID(1),
                 amount: None,
                 kind: TransactionInstructionKind::Chargeback

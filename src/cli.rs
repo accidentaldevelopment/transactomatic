@@ -26,6 +26,5 @@ pub fn run<R: io::Read, W: io::Write>(
     for account in bank.accounts() {
         writer.serialize(account)?;
     }
-    writer.flush()?;
     Ok(())
 }

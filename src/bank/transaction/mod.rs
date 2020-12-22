@@ -10,7 +10,7 @@
 
 pub mod instruction;
 
-use super::account::ClientID;
+use super::account::AccountID;
 use instruction::{TransactionInstruction, TransactionInstructionKind};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ pub struct TryFromError(TransactionInstructionKind);
 /// A realized transaction.
 #[derive(Debug)]
 pub struct Transaction {
-    pub client: ClientID,
+    pub client: AccountID,
     pub tx: TransactionID,
     pub kind: TransactionKind,
     pub amount: Decimal,
@@ -75,7 +75,7 @@ impl std::error::Error for TryFromError {}
 
 impl Transaction {
     pub fn new<D: Into<Decimal>>(
-        client: ClientID,
+        client: AccountID,
         tx: TransactionID,
         kind: TransactionKind,
         amount: D,

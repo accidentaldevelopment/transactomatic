@@ -5,7 +5,7 @@
 pub mod account;
 pub mod transaction;
 
-use account::{Account, ClientID};
+use account::{Account, AccountID};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use transaction::{
@@ -16,7 +16,7 @@ use transaction::{
 /// A Bank is the system used to keep track of accounts and transactions.
 #[derive(Debug)]
 pub struct Bank {
-    accounts: HashMap<ClientID, Account>,
+    accounts: HashMap<AccountID, Account>,
     transactions: HashMap<TransactionID, Transaction>,
 }
 
@@ -137,7 +137,7 @@ mod tests {
         let mut bank = Bank::new();
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: ClientID(0),
+                client: AccountID(0),
                 tx: TransactionID(0),
                 amount: Some(Decimal::new(12345, 4)),
                 kind: TransactionInstructionKind::Deposit,
@@ -151,16 +151,16 @@ mod tests {
     fn withdrawal_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            ClientID(0),
+            AccountID(0),
             Account {
                 available: Decimal::new(10, 4),
-                ..Account::new(ClientID(0))
+                ..Account::new(AccountID(0))
             },
         );
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: ClientID(0),
+                client: AccountID(0),
                 tx: TransactionID(0),
                 amount: Some(Decimal::new(1, 4)),
                 kind: TransactionInstructionKind::Withdrawal,
@@ -174,7 +174,7 @@ mod tests {
     fn withdrawal_transaction_with_insufficient_funds() {
         let mut bank = Bank::new();
         let result = bank.perform_transaction(TransactionInstruction {
-            client: ClientID(0),
+            client: AccountID(0),
             tx: TransactionID(0),
             amount: Some(Decimal::new(1, 4)),
             kind: TransactionInstructionKind::Withdrawal,
@@ -187,19 +187,24 @@ mod tests {
     fn dispute_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            ClientID(0),
+            AccountID(0),
             Account {
                 available: Decimal::from(10),
-                ..Account::new(ClientID(0))
+                ..Account::new(AccountID(0))
             },
         );
         let tx = TransactionID(0);
-        let txn = Transaction::new(ClientID(0), tx, TransactionKind::Deposit, Decimal::from(10));
+        let txn = Transaction::new(
+            AccountID(0),
+            tx,
+            TransactionKind::Deposit,
+            Decimal::from(10),
+        );
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: ClientID(0),
+                client: AccountID(0),
                 tx: TransactionID(0),
                 amount: None,
                 kind: TransactionInstructionKind::Dispute,
@@ -219,21 +224,22 @@ mod tests {
     fn resolve_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            ClientID(0),
+            AccountID(0),
             Account {
                 available: Decimal::from(5),
                 held: Decimal::from(5),
-                ..Account::new(ClientID(0))
+                ..Account::new(AccountID(0))
             },
         );
         let tx = TransactionID(0);
-        let mut txn = Transaction::new(ClientID(0), tx, TransactionKind::Deposit, Decimal::from(5));
+        let mut txn =
+            Transaction::new(AccountID(0), tx, TransactionKind::Deposit, Decimal::from(5));
         txn.amend(TransactionAmendment::Dispute);
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: ClientID(0),
+                client: AccountID(0),
                 tx: TransactionID(0),
                 amount: None,
                 kind: TransactionInstructionKind::Resolve,
@@ -253,21 +259,22 @@ mod tests {
     fn chargeback_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            ClientID(0),
+            AccountID(0),
             Account {
                 available: Decimal::from(5),
                 held: Decimal::from(5),
-                ..Account::new(ClientID(0))
+                ..Account::new(AccountID(0))
             },
         );
         let tx = TransactionID(0);
-        let mut txn = Transaction::new(ClientID(0), tx, TransactionKind::Deposit, Decimal::from(5));
+        let mut txn =
+            Transaction::new(AccountID(0), tx, TransactionKind::Deposit, Decimal::from(5));
         txn.amend(TransactionAmendment::Dispute);
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: ClientID(0),
+                client: AccountID(0),
                 tx: TransactionID(0),
                 amount: None,
                 kind: TransactionInstructionKind::Chargeback,
