@@ -63,7 +63,7 @@ impl Bank {
             TransactionInstructionKind::Withdrawal => {
                 let amount = ti.amount.unwrap();
                 if amount > account.available {
-                    log::error!("insufficent funds for transaction {:?}", ti);
+                    log::error!("insufficient funds for transaction {:?}", ti);
                     return Err(Error::InsufficientFunds);
                 } else {
                     log::info!("applying transaction {:?}", ti);

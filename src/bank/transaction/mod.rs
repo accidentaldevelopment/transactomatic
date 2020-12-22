@@ -46,7 +46,7 @@ pub enum TransactionKind {
     Withdrawal,
 }
 
-/// An amendment/adjustment to an exisiting Transaction.
+/// An amendment/adjustment to an existing Transaction.
 #[derive(Debug, PartialEq)]
 pub enum TransactionAmendment {
     Dispute,
@@ -57,7 +57,7 @@ pub enum TransactionAmendment {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::InsufficientFunds => write!(f, "insufficent funds"),
+            Error::InsufficientFunds => write!(f, "insufficient funds"),
             Error::AccountFrozen => write!(f, "account is frozen"),
         }
     }
