@@ -31,7 +31,7 @@ fn main() {
 
 /// Initialize logging just like env_logger, but default to level OFF to avoid polluting output.
 fn init_logging() {
-    if let Err(_) = std::env::var("RUST_LOG") {
+    if std::env::var("RUST_LOG").is_err() {
         pretty_env_logger::formatted_builder()
             .filter_level(log::LevelFilter::Off)
             .init();

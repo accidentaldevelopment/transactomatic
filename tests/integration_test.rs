@@ -16,9 +16,9 @@ macro_rules! integration_test {
 
                 // Row order isn't deterministic. This sorts all lines (including headers!) to compare.
                 let mut want = want.trim().split('\n').collect::<Vec<&str>>();
-                want.sort();
+                want.sort_unstable();
                 let mut got = got.trim().split('\n').collect::<Vec<&str>>();
-                got.sort();
+                got.sort_unstable();
 
                 assert_eq!(want, got);
             }

@@ -29,23 +29,23 @@ pub enum TransactionInstructionKind {
 mod tests {
     use super::*;
 
-    const DEPOSIT: &'static str = r#"type, client, tx, amount
+    const DEPOSIT: &str = r#"type, client, tx, amount
 deposit, 1, 1, 1.0
 "#;
 
-    const WITHDRAWAL: &'static str = r#"type, client, tx, amount
+    const WITHDRAWAL: &str = r#"type, client, tx, amount
 withdrawal, 1, 1, 1.0
 "#;
 
-    const DISPUTE: &'static str = r#"type, client, tx, amount
+    const DISPUTE: &str = r#"type, client, tx, amount
 dispute, 1, 1,
 "#;
 
-    const RESOLVE: &'static str = r#"type, client, tx, amount
+    const RESOLVE: &str = r#"type, client, tx, amount
 resolve, 1, 1,
 "#;
 
-    const CHARGEBACK: &'static str = r#"type, client, tx, amount
+    const CHARGEBACK: &str = r#"type, client, tx, amount
 chargeback, 1, 1
 "#;
 
