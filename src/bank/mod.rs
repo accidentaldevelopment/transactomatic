@@ -14,7 +14,7 @@ use transaction::{
 };
 
 /// A Bank is the system used to keep track of accounts and transactions.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Bank {
     accounts: HashMap<AccountID, Account>,
     transactions: HashMap<TransactionID, Transaction>,
@@ -22,10 +22,7 @@ pub struct Bank {
 
 impl Bank {
     pub fn new() -> Self {
-        Self {
-            accounts: HashMap::new(),
-            transactions: HashMap::new(),
-        }
+        Default::default()
     }
 
     /// Return an iterator over the accounts.  This a convenience so that the underlying storage doesn't have to be exposed.
@@ -117,12 +114,6 @@ impl Bank {
             }
         }
         Ok(account)
-    }
-}
-
-impl Default for Bank {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
