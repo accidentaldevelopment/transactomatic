@@ -23,6 +23,7 @@ pub struct TransactionID(pub u32);
 pub enum Error {
     InsufficientFunds,
     AccountFrozen,
+    NegativeAmount,
 }
 
 /// Errors related to creating a transaction from an input.
@@ -59,6 +60,7 @@ impl std::fmt::Display for Error {
         match self {
             Error::InsufficientFunds => write!(f, "insufficient funds"),
             Error::AccountFrozen => write!(f, "account is frozen"),
+            Error::NegativeAmount => write!(f, "amount is negative"),
         }
     }
 }

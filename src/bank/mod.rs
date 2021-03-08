@@ -48,6 +48,12 @@ impl Bank {
             return Err(Error::AccountFrozen);
         }
 
+        if let Some(amount) = &ti.amount {
+            if amount.is_sign_negative() {
+                return Err(Error::NegativeAmount);
+            }
+        }
+
         match ti.kind {
             TransactionInstructionKind::Deposit => {
                 log::info!("applying transaction {:?}", ti);
@@ -283,5 +289,18 @@ mod tests {
                 TransactionAmendment::Chargeback
             ]
         );
+    }
+
+    #[test]
+    fn negative_amount() {
+        let mut bank = Bank::new();
+        let result = bank.perform_transaction(TransactionInstruction {
+            client: AccountID(0),
+            tx: TransactionID(0),
+            amount: Some(Decimal::new(-1, 4)),
+            kind: TransactionInstructionKind::Deposit,
+        });
+
+        assert!(matches!(result, Err(Error::NegativeAmount)));
     }
 }
