@@ -35,5 +35,9 @@ integration_test![
     ),
     // A complex series with a single client but multiple disputes and an erroneous resolve
     (complex_with_disputes, "complex_in1.csv", "complex_out1.csv"),
-    (multiple_resolves, "multiple_resolves_in.csv", "multiple_resolves_out.csv")
+    (
+        multiple_resolves,
+        "multiple_resolves_in.csv",
+        "multiple_resolves_out.csv"
+    )
 ];
