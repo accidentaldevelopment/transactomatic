@@ -1,7 +1,7 @@
 use transactomatic::cli;
 
 macro_rules! integration_test {
-    ($(($name:ident, $in_file:expr, $out_file:expr)),*) => {
+    ($($name:ident: $in_file:expr => $out_file:expr),*) => {
         $(
             #[test]
             fn $name() {
@@ -28,16 +28,8 @@ macro_rules! integration_test {
 
 integration_test![
     // A simple transaction series with two clients and no disputes
-    (
-        basic_deposits_and_withdrawals,
-        "simple_in1.csv",
-        "simple_out1.csv"
-    ),
+    basic_deposits_and_withdrawals: "simple_in1.csv" => "simple_out1.csv" ,
     // A complex series with a single client but multiple disputes and an erroneous resolve
-    (complex_with_disputes, "complex_in1.csv", "complex_out1.csv"),
-    (
-        multiple_resolves,
-        "multiple_resolves_in.csv",
-        "multiple_resolves_out.csv"
-    )
+    complex_with_disputes: "complex_in1.csv" => "complex_out1.csv",
+    multiple_resolves: "multiple_resolves_in.csv" => "multiple_resolves_out.csv"
 ];
