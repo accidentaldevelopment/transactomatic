@@ -2,19 +2,21 @@ use rust_decimal::Decimal;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct AccountID(pub u16);
+pub struct AccountId(pub u16);
 
 #[derive(Debug)]
 pub struct Account {
-    pub client: AccountID,
+    pub client: AccountId,
     pub available: Decimal,
     pub held: Decimal,
     pub locked: bool,
 }
 
 impl Account {
-    pub fn new(client: AccountID) -> Self {
+    #[must_use]
+    pub fn new(client: AccountId) -> Self {
         Self {
             client,
             available: Decimal::from(0),
@@ -24,6 +26,7 @@ impl Account {
     }
 
     /// Total balance isn't stored internally to avoid having to remember updating it every time.
+    #[must_use]
     pub fn total(&self) -> Decimal {
         let mut total = self.available + self.held;
         total.rescale(4);

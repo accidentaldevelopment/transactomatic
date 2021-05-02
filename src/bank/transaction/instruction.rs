@@ -1,16 +1,17 @@
 //! This module contains types for handling transaction instructions.
 
-use crate::bank::{AccountID, TransactionID};
+use crate::bank::{AccountId, TransactionId};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 /// A transaction instruction from an outside source.
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct TransactionInstruction {
     #[serde(rename = "type")]
     pub kind: TransactionInstructionKind,
-    pub client: AccountID,
-    pub tx: TransactionID,
+    pub client: AccountId,
+    pub tx: TransactionId,
     pub amount: Option<Decimal>,
 }
 
@@ -72,8 +73,8 @@ chargeback, 1, 1
             deposit,
             DEPOSIT,
             TransactionInstruction {
-                client: AccountID(1),
-                tx: TransactionID(1),
+                client: AccountId(1),
+                tx: TransactionId(1),
                 amount: Some(Decimal::from(1)),
                 kind: TransactionInstructionKind::Deposit
             }
@@ -82,8 +83,8 @@ chargeback, 1, 1
             withdrawal,
             WITHDRAWAL,
             TransactionInstruction {
-                client: AccountID(1),
-                tx: TransactionID(1),
+                client: AccountId(1),
+                tx: TransactionId(1),
                 amount: Some(Decimal::from(1)),
                 kind: TransactionInstructionKind::Withdrawal
             }
@@ -92,8 +93,8 @@ chargeback, 1, 1
             dispute,
             DISPUTE,
             TransactionInstruction {
-                client: AccountID(1),
-                tx: TransactionID(1),
+                client: AccountId(1),
+                tx: TransactionId(1),
                 amount: None,
                 kind: TransactionInstructionKind::Dispute
             }
@@ -102,8 +103,8 @@ chargeback, 1, 1
             resolve,
             RESOLVE,
             TransactionInstruction {
-                client: AccountID(1),
-                tx: TransactionID(1),
+                client: AccountId(1),
+                tx: TransactionId(1),
                 amount: None,
                 kind: TransactionInstructionKind::Resolve
             }
@@ -112,8 +113,8 @@ chargeback, 1, 1
             chargeback,
             CHARGEBACK,
             TransactionInstruction {
-                client: AccountID(1),
-                tx: TransactionID(1),
+                client: AccountId(1),
+                tx: TransactionId(1),
                 amount: None,
                 kind: TransactionInstructionKind::Chargeback
             }

@@ -1,3 +1,5 @@
+#![warn(clippy::all, rust_2018_idioms, clippy::pedantic)]
+
 use transactomatic::cli;
 
 const EXIT_INVALID_USAGE: i32 = 1;
@@ -29,7 +31,7 @@ fn main() {
     }
 }
 
-/// Initialize logging just like env_logger, but default to level OFF to avoid polluting output.
+/// Initialize logging just like `env_logger`, but default to level OFF to avoid polluting output.
 fn init_logging() {
     if std::env::var("RUST_LOG").is_err() {
         pretty_env_logger::formatted_builder()

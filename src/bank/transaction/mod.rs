@@ -10,13 +10,14 @@
 
 pub mod instruction;
 
-use super::account::AccountID;
+use super::account::AccountId;
 use instruction::{TransactionInstruction, TransactionInstructionKind};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
-pub struct TransactionID(pub u32);
+pub struct TransactionId(pub u32);
 
 /// Errors related to performing transactions
 #[derive(Debug, PartialEq)]
@@ -33,14 +34,15 @@ pub struct TryFromError(TransactionInstructionKind);
 /// A realized transaction.
 #[derive(Debug)]
 pub struct Transaction {
-    pub client: AccountID,
-    pub tx: TransactionID,
+    pub client: AccountId,
+    pub tx: TransactionId,
     pub kind: TransactionKind,
     pub amount: Decimal,
     amendment_history: Vec<TransactionAmendment>,
 }
 
 /// Type of original transaction
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug)]
 pub enum TransactionKind {
     Deposit,
@@ -48,6 +50,7 @@ pub enum TransactionKind {
 }
 
 /// An amendment/adjustment to an existing Transaction.
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, PartialEq)]
 pub enum TransactionAmendment {
     Dispute,
@@ -77,8 +80,8 @@ impl std::error::Error for TryFromError {}
 
 impl Transaction {
     pub fn new<D: Into<Decimal>>(
-        client: AccountID,
-        tx: TransactionID,
+        client: AccountId,
+        tx: TransactionId,
         kind: TransactionKind,
         amount: D,
     ) -> Self {
@@ -92,6 +95,7 @@ impl Transaction {
     }
 
     /// Returns `true` if the transaction is in dispute.  That is, its last amendment is Dispute.
+    #[must_use]
     pub fn is_disputed(&self) -> bool {
         if let Some(TransactionAmendment::Dispute) = self.amendment_history.last() {
             return true;
@@ -103,6 +107,7 @@ impl Transaction {
         self.amendment_history.push(amendment);
     }
 
+    #[must_use]
     /// Returns a read-only view into the transaction's history.
     pub fn amendment_history(&self) -> &[TransactionAmendment] {
         &self.amendment_history[..]
@@ -112,7 +117,9 @@ impl Transaction {
 impl std::convert::TryFrom<TransactionInstruction> for Transaction {
     type Error = TryFromError;
 
-    /// Attempt to build a transaction from the input.  This only works if the input type is a TransactionKind and not a TransactionAmendment.
+    /// Attempt to build a transaction from the input.  This only works if the
+    /// input type is a [`TransactionKind`](TransactionKind) and not a
+    /// [`TransactionAmendment`](TransactionAmendment).
     fn try_from(ti: TransactionInstruction) -> Result<Self, Self::Error> {
         match ti.kind {
             TransactionInstructionKind::Deposit => Ok(Transaction::new(

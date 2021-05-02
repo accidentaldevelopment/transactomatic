@@ -5,24 +5,25 @@
 pub mod account;
 pub mod transaction;
 
-use account::{Account, AccountID};
+use account::{Account, AccountId};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use transaction::{
     instruction::{TransactionInstruction, TransactionInstructionKind},
-    Error, Transaction, TransactionAmendment, TransactionID,
+    Error, Transaction, TransactionAmendment, TransactionId,
 };
 
 /// A Bank is the system used to keep track of accounts and transactions.
 #[derive(Debug, Default)]
 pub struct Bank {
-    accounts: HashMap<AccountID, Account>,
-    transactions: HashMap<TransactionID, Transaction>,
+    accounts: HashMap<AccountId, Account>,
+    transactions: HashMap<TransactionId, Transaction>,
 }
 
 impl Bank {
+    #[must_use]
     pub fn new() -> Self {
-        Default::default()
+        Bank::default()
     }
 
     /// Return an iterator over the accounts.  This a convenience so that the underlying storage doesn't have to be exposed.
@@ -30,13 +31,23 @@ impl Bank {
         self.accounts.values()
     }
 
-    /// Perform a transaction based on the [TransactionInput](transaction/struct.TransactionInput.html).
+    /// Perform a transaction based on the [`TransactionInput`](transaction/struct.TransactionInput.html).
     ///
     /// This method returns a Result with a reference to the affected account.
     /// This is to allow the caller to see the current state after the transaction has been applied.
     ///
     /// The Error returned does not necessarily indicate a critical error; it may just mean that the transaction wasn't applied.
     /// For example, the input could be a disputed Transaction for which the original Transaction doesn't exist.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is an error converting the `TransactionInstruction` into
+    /// a `Transaction`. Both types are controlled in this codebase so this
+    /// should never happen.
+    ///
+    /// # Errors
+    ///
+    /// Will return `Err` if it can't process the instruction.
     pub fn perform_transaction(&mut self, ti: TransactionInstruction) -> Result<&Account, Error> {
         let account = self.accounts.entry(ti.client).or_insert_with(|| {
             log::info!("creating account {:?}", ti.client);
@@ -68,10 +79,10 @@ impl Bank {
                 if amount > account.available {
                     log::error!("insufficient funds for transaction {:?}", ti);
                     return Err(Error::InsufficientFunds);
-                } else {
-                    log::info!("applying transaction {:?}", ti);
-                    log::trace!("applying transaction {:?} to account {:?}", ti, account);
                 }
+
+                log::info!("applying transaction {:?}", ti);
+                log::trace!("applying transaction {:?} to account {:?}", ti, account);
                 account.available -= amount;
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
@@ -134,8 +145,8 @@ mod tests {
         let mut bank = Bank::new();
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: AccountID(0),
-                tx: TransactionID(0),
+                client: AccountId(0),
+                tx: TransactionId(0),
                 amount: Some(Decimal::new(12345, 4)),
                 kind: TransactionInstructionKind::Deposit,
             })
@@ -148,17 +159,17 @@ mod tests {
     fn withdrawal_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            AccountID(0),
+            AccountId(0),
             Account {
                 available: Decimal::new(10, 4),
-                ..Account::new(AccountID(0))
+                ..Account::new(AccountId(0))
             },
         );
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: AccountID(0),
-                tx: TransactionID(0),
+                client: AccountId(0),
+                tx: TransactionId(0),
                 amount: Some(Decimal::new(1, 4)),
                 kind: TransactionInstructionKind::Withdrawal,
             })
@@ -171,8 +182,8 @@ mod tests {
     fn withdrawal_transaction_with_insufficient_funds() {
         let mut bank = Bank::new();
         let result = bank.perform_transaction(TransactionInstruction {
-            client: AccountID(0),
-            tx: TransactionID(0),
+            client: AccountId(0),
+            tx: TransactionId(0),
             amount: Some(Decimal::new(1, 4)),
             kind: TransactionInstructionKind::Withdrawal,
         });
@@ -184,15 +195,15 @@ mod tests {
     fn dispute_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            AccountID(0),
+            AccountId(0),
             Account {
                 available: Decimal::from(10),
-                ..Account::new(AccountID(0))
+                ..Account::new(AccountId(0))
             },
         );
-        let tx = TransactionID(0);
+        let tx = TransactionId(0);
         let txn = Transaction::new(
-            AccountID(0),
+            AccountId(0),
             tx,
             TransactionKind::Deposit,
             Decimal::from(10),
@@ -201,8 +212,8 @@ mod tests {
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: AccountID(0),
-                tx: TransactionID(0),
+                client: AccountId(0),
+                tx: TransactionId(0),
                 amount: None,
                 kind: TransactionInstructionKind::Dispute,
             })
@@ -221,23 +232,23 @@ mod tests {
     fn resolve_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            AccountID(0),
+            AccountId(0),
             Account {
                 available: Decimal::from(5),
                 held: Decimal::from(5),
-                ..Account::new(AccountID(0))
+                ..Account::new(AccountId(0))
             },
         );
-        let tx = TransactionID(0);
+        let tx = TransactionId(0);
         let mut txn =
-            Transaction::new(AccountID(0), tx, TransactionKind::Deposit, Decimal::from(5));
+            Transaction::new(AccountId(0), tx, TransactionKind::Deposit, Decimal::from(5));
         txn.amend(TransactionAmendment::Dispute);
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: AccountID(0),
-                tx: TransactionID(0),
+                client: AccountId(0),
+                tx: TransactionId(0),
                 amount: None,
                 kind: TransactionInstructionKind::Resolve,
             })
@@ -256,23 +267,23 @@ mod tests {
     fn chargeback_transaction() {
         let mut bank = Bank::new();
         bank.accounts.insert(
-            AccountID(0),
+            AccountId(0),
             Account {
                 available: Decimal::from(5),
                 held: Decimal::from(5),
-                ..Account::new(AccountID(0))
+                ..Account::new(AccountId(0))
             },
         );
-        let tx = TransactionID(0);
+        let tx = TransactionId(0);
         let mut txn =
-            Transaction::new(AccountID(0), tx, TransactionKind::Deposit, Decimal::from(5));
+            Transaction::new(AccountId(0), tx, TransactionKind::Deposit, Decimal::from(5));
         txn.amend(TransactionAmendment::Dispute);
         bank.transactions.insert(txn.tx, txn);
 
         let account = bank
             .perform_transaction(TransactionInstruction {
-                client: AccountID(0),
-                tx: TransactionID(0),
+                client: AccountId(0),
+                tx: TransactionId(0),
                 amount: None,
                 kind: TransactionInstructionKind::Chargeback,
             })
@@ -295,8 +306,8 @@ mod tests {
     fn negative_amount() {
         let mut bank = Bank::new();
         let result = bank.perform_transaction(TransactionInstruction {
-            client: AccountID(0),
-            tx: TransactionID(0),
+            client: AccountId(0),
+            tx: TransactionId(0),
             amount: Some(Decimal::new(-1, 4)),
             kind: TransactionInstructionKind::Deposit,
         });

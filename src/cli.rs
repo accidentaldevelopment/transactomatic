@@ -1,6 +1,9 @@
 use crate::bank::{transaction::instruction::TransactionInstruction, Bank};
 use std::io;
 
+/// # Errors
+///
+/// Will return an `Err` if there is a problem running the main application logic.
 pub fn run<R: io::Read, W: io::Write>(
     input: R,
     output: W,
@@ -14,7 +17,13 @@ pub fn run<R: io::Read, W: io::Write>(
     let mut bank = Bank::new();
 
     for ti in reader.deserialize() {
-        let tx_input: TransactionInstruction = ti.unwrap();
+        let tx_input: TransactionInstruction = match ti {
+            Ok(ti) => ti,
+            Err(e) => {
+                log::error!("error deserializing transaction instruction: {:?}", e);
+                continue;
+            }
+        };
         log::debug!("transaction instruction {:?}", tx_input);
         // Errors are to be dropped according to spec
         if let Err(e) = bank.perform_transaction(tx_input) {
