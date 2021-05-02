@@ -2,16 +2,17 @@
 //!
 //! A [Bank](struct.Bank.html) is the system used to keep track of accounts and transactions, as well as apply transactions.
 
-pub mod account;
-pub mod transaction;
-
 use account::{Account, AccountId};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use tracing::instrument;
 use transaction::{
     instruction::{TransactionInstruction, TransactionInstructionKind},
     Error, Transaction, TransactionAmendment, TransactionId,
 };
+
+pub mod account;
+pub mod transaction;
 
 /// A Bank is the system used to keep track of accounts and transactions.
 #[derive(Debug, Default)]
@@ -48,14 +49,15 @@ impl Bank {
     /// # Errors
     ///
     /// Will return `Err` if it can't process the instruction.
+    #[instrument(skip(self))]
     pub fn perform_transaction(&mut self, ti: TransactionInstruction) -> Result<&Account, Error> {
         let account = self.accounts.entry(ti.client).or_insert_with(|| {
-            log::info!("creating account {:?}", ti.client);
+            tracing::info!("creating account");
             Account::new(ti.client)
         });
 
         if account.locked {
-            log::warn!("account is locked {:?}", account);
+            tracing::warn!(?account, "account is locked");
             return Err(Error::AccountFrozen);
         }
 
@@ -67,66 +69,66 @@ impl Bank {
 
         match ti.kind {
             TransactionInstructionKind::Deposit => {
-                log::info!("applying transaction {:?}", ti);
-                log::trace!("applying transaction {:?} to account {:?}", ti, account);
+                tracing::info!("applying transaction");
+                tracing::trace!(?account, "applying transaction");
                 account.available += ti.amount.unwrap();
-                log::trace!("transaction applied to account {:?}", account);
+                tracing::trace!(?account, "transaction applied to account");
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
             }
             TransactionInstructionKind::Withdrawal => {
                 let amount = ti.amount.unwrap();
                 if amount > account.available {
-                    log::error!("insufficient funds for transaction {:?}", ti);
+                    tracing::error!("insufficient funds for transaction");
                     return Err(Error::InsufficientFunds);
                 }
 
-                log::info!("applying transaction {:?}", ti);
-                log::trace!("applying transaction {:?} to account {:?}", ti, account);
+                tracing::info!("applying transaction");
+                tracing::trace!(?account, "applying transaction",);
                 account.available -= amount;
                 self.transactions
                     .insert(ti.tx, Transaction::try_from(ti).unwrap());
-                log::trace!("transaction applied to account {:?}", account);
+                tracing::trace!(?account, "transaction applied to account");
             }
             TransactionInstructionKind::Dispute => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
-                    log::trace!("applying transaction {:?} to account {:?}", ti, account);
+                    tracing::trace!(?account, "applying transaction to account");
                     account.available -= prev_txn.amount;
                     account.held += prev_txn.amount;
                     prev_txn.amend(TransactionAmendment::Dispute);
-                    log::trace!("transaction applied to account {:?}", account);
+                    tracing::trace!(?account, "transaction applied to account");
                 } else {
-                    log::info!("original transaction not found for instruction {:?}", ti);
+                    tracing::info!("original transaction not found for instruction");
                 }
             }
             TransactionInstructionKind::Resolve => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
-                        log::trace!("applying transaction {:?} to account {:?}", ti, account);
+                        tracing::trace!(?account, "applying transaction to account");
                         account.available += prev_txn.amount;
                         account.held -= prev_txn.amount;
                         prev_txn.amend(TransactionAmendment::Resolve);
-                        log::trace!("transaction applied to account {:?}", account);
+                        tracing::trace!(?account, "transaction applied to account");
                     } else {
-                        log::warn!("transaction is not in dispute: {:?}", prev_txn);
+                        tracing::warn!(txn = ?prev_txn, "transaction is not in dispute");
                     }
                 } else {
-                    log::info!("original transaction not found for instruction {:?}", ti);
+                    tracing::info!("original transaction not found for instruction");
                 }
             }
             TransactionInstructionKind::Chargeback => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
                     if prev_txn.is_disputed() {
-                        log::trace!("applying transaction {:?} to account {:?}", ti, account);
+                        tracing::trace!(?account, "applying transaction to account");
                         account.held -= prev_txn.amount;
                         prev_txn.amend(TransactionAmendment::Chargeback);
                         account.locked = true;
-                        log::trace!("transaction applied to account {:?}", account);
+                        tracing::trace!(?account, "transaction applied to account");
                     } else {
-                        log::warn!("transaction is not in dispute: {:?}", prev_txn);
+                        tracing::warn!(txn = ?prev_txn, "transaction is not in dispute");
                     }
                 } else {
-                    log::info!("original transaction not found for instruction {:?}", ti);
+                    tracing::info!("original transaction not found for instruction");
                 }
             }
         }

@@ -19,15 +19,15 @@ pub fn run<R: io::Read, W: io::Write>(
     for ti in reader.deserialize() {
         let tx_input: TransactionInstruction = match ti {
             Ok(ti) => ti,
-            Err(e) => {
-                log::error!("error deserializing transaction instruction: {:?}", e);
+            Err(err) => {
+                tracing::error!(?err, "error deserializing transaction instruction");
                 continue;
             }
         };
-        log::debug!("transaction instruction {:?}", tx_input);
+        tracing::debug!("transaction instruction {:?}", tx_input);
         // Errors are to be dropped according to spec
-        if let Err(e) = bank.perform_transaction(tx_input) {
-            log::error!("error applying transaction: {:?}", e);
+        if let Err(err) = bank.perform_transaction(tx_input) {
+            tracing::error!(?err, "error applying transaction");
         }
     }
 

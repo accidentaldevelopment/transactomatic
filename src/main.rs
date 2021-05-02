@@ -1,5 +1,10 @@
 #![warn(clippy::all, rust_2018_idioms, clippy::pedantic)]
 
+use std::io;
+
+use tracing::subscriber::set_global_default;
+use tracing_log::LogTracer;
+use tracing_subscriber::{fmt::format::FmtSpan, layer::SubscriberExt, EnvFilter, Registry};
 use transactomatic::cli;
 
 const EXIT_INVALID_USAGE: i32 = 1;
@@ -33,11 +38,11 @@ fn main() {
 
 /// Initialize logging just like `env_logger`, but default to level OFF to avoid polluting output.
 fn init_logging() {
-    if std::env::var("RUST_LOG").is_err() {
-        pretty_env_logger::formatted_builder()
-            .filter_level(log::LevelFilter::Off)
-            .init();
-    } else {
-        pretty_env_logger::init();
-    }
+    LogTracer::init().expect("could not capture logs");
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let layer = tracing_subscriber::fmt::layer()
+        .with_span_events(FmtSpan::FULL)
+        .with_writer(io::stderr);
+    let subscriber = Registry::default().with(env_filter).with(layer);
+    set_global_default(subscriber).expect("error creating tracing subscriber")
 }
