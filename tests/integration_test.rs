@@ -1,6 +1,11 @@
 use transactomatic::cli;
 
 macro_rules! integration_test {
+    ($($name:ident: $in_file:expr),*) => {
+        $(
+            integration_test!($name: concat!($in_file, "_in.csv") => concat!($in_file, "_out.csv"));
+        )*
+    };
     ($($name:ident: $in_file:expr => $out_file:expr),*) => {
         $(
             #[test]
@@ -32,4 +37,16 @@ integration_test![
     // A complex series with a single client but multiple disputes and an erroneous resolve
     complex_with_disputes: "complex_in1.csv" => "complex_out1.csv",
     multiple_resolves: "multiple_resolves_in.csv" => "multiple_resolves_out.csv"
+];
+
+integration_test![
+    duplicate_transaction_id: "duplicate_transaction_id",
+    column_reorder: "column_reorder",
+    invalid_transaction_type: "invalid_transaction_type",
+    precision_greater_than_4_decimals: "precision_greater_than_4_decimals",
+    resolve_on_different_account: "resolve_on_different_account",
+    simple_chargeback: "simple_chargeback",
+    simple_dispute: "simple_dispute",
+    simple_whitespace: "simple_whitespace",
+    withdraw_neg: "withdraw_neg"
 ];

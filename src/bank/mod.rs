@@ -68,49 +68,71 @@ impl Bank {
         }
 
         match ti.kind {
-            TransactionInstructionKind::Deposit => {
-                tracing::info!("applying transaction");
-                tracing::trace!(?account, "applying transaction");
-                account.available += ti.amount.unwrap();
-                tracing::trace!(?account, "transaction applied to account");
-                self.transactions
-                    .insert(ti.tx, Transaction::try_from(ti).unwrap());
-            }
-            TransactionInstructionKind::Withdrawal => {
-                let amount = ti.amount.unwrap();
-                if amount > account.available {
-                    tracing::error!("insufficient funds for transaction");
-                    return Err(Error::InsufficientFunds);
+            TransactionInstructionKind::Deposit => match self.transactions.entry(ti.tx) {
+                std::collections::hash_map::Entry::Occupied(_) => {
+                    tracing::error!(id = ?ti.tx, "transaction id already exists")
                 }
+                std::collections::hash_map::Entry::Vacant(_) => {
+                    tracing::info!("applying transaction");
+                    tracing::trace!(?account, "applying transaction");
+                    account.available += ti.amount.unwrap();
+                    tracing::trace!(?account, "transaction applied to account");
+                    self.transactions
+                        .insert(ti.tx, Transaction::try_from(ti).unwrap());
+                }
+            },
+            TransactionInstructionKind::Withdrawal => match self.transactions.entry(ti.tx) {
+                std::collections::hash_map::Entry::Occupied(_) => {
+                    tracing::error!(id = ?ti.tx, "transaction id already exists")
+                }
+                std::collections::hash_map::Entry::Vacant(_) => {
+                    let amount = ti.amount.unwrap();
+                    if amount > account.available {
+                        tracing::error!("insufficient funds for transaction");
+                        return Err(Error::InsufficientFunds);
+                    }
 
-                tracing::info!("applying transaction");
-                tracing::trace!(?account, "applying transaction",);
-                account.available -= amount;
-                self.transactions
-                    .insert(ti.tx, Transaction::try_from(ti).unwrap());
-                tracing::trace!(?account, "transaction applied to account");
-            }
+                    tracing::info!("applying transaction");
+                    tracing::trace!(?account, "applying transaction",);
+                    account.available -= amount;
+                    self.transactions
+                        .insert(ti.tx, Transaction::try_from(ti).unwrap());
+                    tracing::trace!(?account, "transaction applied to account");
+                }
+            },
             TransactionInstructionKind::Dispute => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
-                    tracing::trace!(?account, "applying transaction to account");
-                    account.available -= prev_txn.amount;
-                    account.held += prev_txn.amount;
-                    prev_txn.amend(TransactionAmendment::Dispute);
-                    tracing::trace!(?account, "transaction applied to account");
+                    if prev_txn.client == ti.client {
+                        tracing::trace!(?account, "applying transaction to account");
+                        account.available -= prev_txn.amount;
+                        account.held += prev_txn.amount;
+                        prev_txn.amend(TransactionAmendment::Dispute);
+                        tracing::trace!(?account, "transaction applied to account");
+                    } else {
+                        tracing::error!("transaction client doesn't match instruction client");
+                    }
                 } else {
                     tracing::info!("original transaction not found for instruction");
                 }
             }
             TransactionInstructionKind::Resolve => {
                 if let Some(prev_txn) = self.transactions.get_mut(&ti.tx) {
-                    if prev_txn.is_disputed() {
-                        tracing::trace!(?account, "applying transaction to account");
-                        account.available += prev_txn.amount;
-                        account.held -= prev_txn.amount;
-                        prev_txn.amend(TransactionAmendment::Resolve);
-                        tracing::trace!(?account, "transaction applied to account");
+                    if prev_txn.client == ti.client {
+                        if prev_txn.is_disputed() {
+                            tracing::trace!(?account, "applying transaction to account");
+                            account.available += prev_txn.amount;
+                            account.held -= prev_txn.amount;
+                            prev_txn.amend(TransactionAmendment::Resolve);
+                            tracing::trace!(?account, "transaction applied to account");
+                        } else {
+                            tracing::warn!(txn = ?prev_txn, "transaction is not in dispute");
+                        }
                     } else {
-                        tracing::warn!(txn = ?prev_txn, "transaction is not in dispute");
+                        tracing::error!(
+                            prev_tx_client = ?prev_txn.client,
+                            instruction_client = ?ti.client,
+                            "transaction client doesn't match instruction client"
+                        );
                     }
                 } else {
                     tracing::info!("original transaction not found for instruction");
